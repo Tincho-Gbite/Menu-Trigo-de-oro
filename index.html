@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Menú - El Trigo de Oro</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Montserrat:wght@400;500;700&family=Playfair+Display:ital,wght@1,600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #c26928;
+      --primary-dark: #8c420f;
+      --text: #2f2119;
+      --bg: #f8f4ed;
+      --card-bg: rgba(255, 255, 255, 0.92);
+      --line: #b07d58;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Montserrat', sans-serif;
+      background: var(--bg) url('https://images.unsplash.com/photo-1509440159596-0249088772ff?auto=format&fit=crop&w=1200&q=80') center/cover fixed;
+      color: var(--text);
+      padding: 20px 14px 60px;
+    }
+    .container {
+      max-width: 480px;
+      margin: 0 auto;
+      background: var(--card-bg);
+      backdrop-filter: blur(10px);
+      border-radius: 20px;
+      padding: 28px 20px;
+      box-shadow: 0 15px 35px rgba(0,0,0,0.18);
+    }
+    .header { text-align: center; margin-bottom: 24px; }
+    .brand-title {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 2.8rem;
+      letter-spacing: 2px;
+      color: var(--primary);
+      line-height: 1;
+    }
+    .brand-sub {
+      font-family: 'Playfair Display', serif;
+      font-style: italic;
+      font-size: 1.25rem;
+      color: var(--text);
+      margin-top: 2px;
+    }
+    .section-wrap {
+      text-align: center;
+      margin: 30px 0 16px;
+      position: relative;
+    }
+    .section-wrap::before, .section-wrap::after {
+      content: "";
+      position: absolute;
+      top: 50%;
+      width: 22%;
+      height: 1px;
+      background: var(--line);
+    }
+    .section-wrap::before { left: 0; }
+    .section-wrap::after { right: 0; }
+    .section-title {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 1.7rem;
+      letter-spacing: 1.5px;
+      color: var(--text);
+      display: inline-block;
+      padding: 0 12px;
+    }
+    .item {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      padding: 9px 0;
+      border-bottom: 1px dotted rgba(47, 33, 25, 0.28);
+    }
+    .item-info { flex: 1; padding-right: 14px; }
+    .item-name { font-weight: 700; font-size: 0.95rem; line-height: 1.2; }
+    .item-desc { font-size: 0.8rem; opacity: 0.8; margin-top: 3px; }
+    .item-price {
+      font-weight: 700;
+      font-size: 1.05rem;
+      color: var(--primary-dark);
+      white-space: nowrap;
+    }
+    .status-msg { text-align: center; padding: 40px 10px; font-weight: 600; color: var(--primary-dark); }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <div class="header">
+      <h1 class="brand-title">EL TRIGO DE ORO</h1>
+      <p class="brand-sub">Menú</p>
+    </div>
+
+    <div id="menu-container">
+      <p class="status-msg">Cargando menú actualizado...</p>
+    </div>
+  </div>
+
+  <script>
+    // -------------------------------------------------------------
+    // PEGA ACÁ TU ENLACE CSV PUBLICADO DE GOOGLE SHEETS:
+    // -------------------------------------------------------------
+    const URL_SHEET_CSV = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vS0WgP6Q60ZM1Y7IriQukgMN_tkrEWV-z8tNWToPgcdMUzof1B_eL9FfTI_xBDJZNXJB6pRLMFfyWr8/pub?gid=0&single=true&output=csv';
+
+    async function obtenerMenu() {
+      try {
+        const respuesta = await fetch(URL_SHEET_CSV);
+        const texto = await respuesta.text();
+        const filas = parsearCSV(texto);
+        renderizarMenu(filas);
+      } catch (err) {
+        document.getElementById('menu-container').innerHTML = 
+          '<p class="status-msg">No se pudo cargar el menú. Por favor avise al personal.</p>';
+      }
+    }
+
+    function renderizarMenu(filas) {
+      // Busca la fila donde empiezan los encabezados reales
+      let indiceInicio = -1;
+      for (let i = 0; i < filas.length; i++) {
+        const col0 = (filas[i][0] || '').toLowerCase().trim();
+        if (col0 === 'categoría' || col0 === 'categoria') {
+          indiceInicio = i + 1;
+          break;
+        }
+      }
+      if (indiceInicio === -1) indiceInicio = 1;
+
+      const categorias = {};
+
+      for (let i = indiceInicio; i < filas.length; i++) {
+        const fila = filas[i];
+        if (!fila || fila.length < 2) continue;
+
+        const categoria = (fila[0] || '').trim();
+        const producto = (fila[1] || '').trim();
+        const detalle = (fila[2] || '').trim();
+        const precio = (fila[3] || '').trim();
+        const disponible = (fila[4] || '').trim().toLowerCase();
+
+        if (!producto || disponible === 'no') continue;
+
+        const nombreCat = categoria || 'Varios';
+        if (!categorias[nombreCat]) categorias[nombreCat] = [];
+        categorias[nombreCat].push({ producto, detalle, precio });
+      }
+
+      let html = '';
+      for (const [nombreCat, productos] of Object.entries(categorias)) {
+        html += `
+          <div class="section-wrap">
+            <span class="section-title">${nombreCat.toUpperCase()}</span>
+          </div>
+        `;
+        productos.forEach(p => {
+          const precioFormateado = p.precio.startsWith('$') ? p.precio : ('$' + p.precio);
+          html += `
+            <div class="item">
+              <div class="item-info">
+                <div class="item-name">${p.producto}</div>
+                ${p.detalle && p.detalle !== '-' ? `<div class="item-desc">${p.detalle}</div>` : ''}
+              </div>
+              <div class="item-price">${precioFormateado}</div>
+            </div>
+          `;
+        });
+      }
+
+      document.getElementById('menu-container').innerHTML = html;
+    }
+
+    function parsearCSV(texto) {
+      return texto.split('\n').map(linea => {
+        const regex = /(?:,|\n|^)("(?:(?:"")*[^"]*)*"|[^",\n]*|(?:\n|$))/g;
+        const matches = [];
+        let match;
+        while ((match = regex.exec(linea)) && matches.length < 6) {
+          let val = match[1] || '';
+          if (val.startsWith('"') && val.endsWith('"')) val = val.slice(1, -1).replace(/""/g, '"');
+          matches.push(val.trim());
+        }
+        return matches;
+      });
+    }
+
+    obtenerMenu();
+  </script>
+</body>
+</html>
